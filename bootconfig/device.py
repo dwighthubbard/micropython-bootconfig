@@ -1,3 +1,6 @@
+"""
+Module to configure a micropython device
+"""
 __version__ = '0.0.1'
 __copyright__ = "Copyright 2016 Dwight Hubbard"
 
