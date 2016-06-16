@@ -1,0 +1,175 @@
+#!/usr/bin/env python
+import argparse
+import logging
+import os
+import socket
+import subprocess
+import sys
+
+
+logger_name = __name__
+if logger_name == '__main__':
+    logger_name = os.path.basename(sys.argv[0])
+logger = logging.getLogger(logger_name)
+
+
+class ConnectionError(Exception):
+    pass
+
+def send_key_value(socket, key, value):
+    key_value = key + '=' + value
+    key_value = key_value.encode('ascii')
+    socket.send('%d\r\n' % len(key_value))
+    socket.send(key_value + '\r\n')
+
+
+def configure_device(config_dict, hostname=None, port=8266):
+    if not hostname:
+        hostname = '192.168.4.1'
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        client_socket.connect((hostname, port))
+    except socket.error:
+        raise ConnectionError('Unable to connect to the configuration service on micropython board')
+    for key, value in config_dict.items():
+        send_key_value(client_socket, key, value)
+    client_socket.close()
+
+
+def wifi_interfaces_proc():
+    interfaces = []
+    with open('/proc/net/wireless') as wifi_interface_handle:
+        for line in wifi_interface_handle:
+            if ':' in line:
+                interfaces.append(line.strip().split(':')[0])
+    return interfaces
+
+
+def wifi_interfaces():
+    interfaces = []
+    for line in subprocess.check_output(['nmcli', 'device']).split('\n'):
+        device = line.strip().split()
+        if len(device) == 4 and device[1] == 'wifi':
+            interfaces.append(device[0])
+    return interfaces
+
+
+def scan_interface_for_micropython_boards_iwlist(interface):
+    command = ['/sbin/iwlist', interface, 'scan']
+
+    output = subprocess.check_output(command)
+    essid_set = set()
+    for line in output.split('\n'):
+        line = line.strip()
+        if line.startswith('ESSID:'):
+            essid = line[6:].strip('"')
+            if essid.startswith('micropython-') and len(essid.split('-')) == 3:
+                essid_set.add(line[6:].strip('"'))
+    return list(essid_set)
+
+
+def scan_interface_for_micropython_boards_nmcli(interface):
+    command = ['nmcli', 'device', 'wifi', 'list', 'ifname', interface]
+    output = subprocess.check_output(command)
+    essid_list = []
+    for line in output.split('\n'):
+        line = line.strip()
+        if line:
+            essid = line.strip().split()[0].strip()
+            if essid.startswith('micropython-') and len(essid.split('-')) == 3:
+                essid_list.append(essid)
+    return essid_list
+
+
+def scan_interface_for_micropython_boards(interface):
+    return scan_interface_for_micropython_boards_nmcli(interface)
+
+class NetworkConnectionFailed(Exception):
+    pass
+
+def connect_to_micropython_wifi_nmcli(ssid, password):
+    command = [ 'nmcli', 'device', 'wifi', 'connect', ssid]
+    if password:
+        command += ['password', password]
+    logger.debug(' '.join(command))
+    try:
+        subprocess.check_call(command)
+    except subprocess.CalledProcessError:
+        raise NetworkConnectionFailed('Unable to connect to wifi network %r' % ssid)
+
+def disconnect_from_micropython_wifi_nmcli(ssid):
+    command = [ 'nmcli', 'connection', 'delete', ssid]
+    logger.debug(' '.join(command))
+    subprocess.check_call(command)
+
+def scan_for_micropython_boards():
+    boards = []
+    for interface in wifi_interfaces():
+        logger.debug('Scanning wifi adapter %r for micropython boards', interface)
+        boards += scan_interface_for_micropython_boards(interface)
+    return boards
+
+def active_connection_nmcli(interface):
+    command = ['nmcli', 'connection', 'show', '--active']
+    logger.debug(command)
+    for line in subprocess.check_output(command):
+        line=line.strip().split()
+        if len(line)==4 and line[-1] == interface:
+            return line[0]
+
+def activate_connection_nmcli(connection):
+    if not connection:
+        logger.debug('No previous active connection specified')
+        return
+    command = ['nmcli', 'connection', 'up', connection]
+    logger.debug(command)
+    subprocess.check_call(command)
+
+def action_configure_device(arguments):
+    config_dict = {
+    }
+    if arguments.ssid:
+        config_dict['wifi_ssid'] = arguments.ssid
+        config_dict['wifi_password'] = arguments.wifi_passphrase
+    for item in arguments.keyval:
+        if ':' in item:
+            key, value = item.split(':', 1)
+            config_dict[key] = value
+    logger.debug('Sending configuration %r to device %r', config_dict, args.board)
+    active_connection = active_connection_nmcli(wifi_interfaces())
+    logger.debug('Active connection is %r', active_connection)
+    logger.debug('Connecting to the micropython board via wifi')
+    connect_to_micropython_wifi_nmcli(arguments.board, 'MicropyBootConfig')
+    logger.debug('Sending over the device configuration')
+    try:
+        configure_device(config_dict)
+    except ConnectionError:
+        logger.error('Configuration of device %r failed', arguments.board)
+    logger.debug('Destroying the temporary wifi connection')
+    disconnect_from_micropython_wifi_nmcli(arguments.board)
+    logger.debug('Restoring the original wifi connection')
+    activate_connection_nmcli(active_connection)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    parser = argparse.ArgumentParser()
+    command_parser = parser.add_subparsers(dest='command', help='Commands')
+
+    configure_parser = command_parser.add_parser('configure', help='Configure a micropython device')
+    configure_parser.add_argument('board', help='Micropython boards to configure')
+    wifi_group = configure_parser.add_argument_group('Wifi Settings')
+    wifi_group.add_argument('--ssid', default=None, help="The wifi network to connect to")
+    wifi_group.add_argument('--wifi_passphrase', default=None, help='The passphrase/password for the wifi network')
+    configure_parser.add_argument('--keyval', action='append', default=[], help='Add arbitrary key/values to the configuration')
+
+    scan_parser = command_parser.add_parser('scan', help='Scan for unconfigured micropython devices')
+
+    args = parser.parse_args()
+    logger.debug('Parsed arguments %r received', args)
+    if args.command == 'configure':
+        action_configure_device(args)
+    elif args.command == 'scan':
+        print('\n'.join(scan_for_micropython_boards()))
+    else:
+        parser.usage()

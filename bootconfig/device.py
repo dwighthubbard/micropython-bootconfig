@@ -28,9 +28,7 @@ def read_config_from_network():
     except:
         import socket
 
-    print("*"*80)
     print("Waiting for configuration from the network")
-    print("*"*80)
     config = {}
     s = socket.socket()
     address_info = socket.getaddrinfo("0.0.0.0", 8266)
@@ -84,8 +82,16 @@ def configure_device():
         return
 
 
+def header(text):
+    hline = '*' * 80
+    print(hline)
+    print(text)
+    print(hline)
+
+
 def configuration():
     if not configure_device():
         from .wifi import enable_ap_mode
+        header("This device is not configured, going into configuration mode")
         enable_ap_mode()
         read_config_from_network()
