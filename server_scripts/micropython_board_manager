@@ -84,8 +84,10 @@ def scan_interface_for_micropython_boards_nmcli(interface):
 def scan_interface_for_micropython_boards(interface):
     return scan_interface_for_micropython_boards_nmcli(interface)
 
+
 class NetworkConnectionFailed(Exception):
     pass
+
 
 def connect_to_micropython_wifi_nmcli(ssid, password):
     command = [ 'nmcli', 'device', 'wifi', 'connect', ssid]
@@ -109,13 +111,40 @@ def scan_for_micropython_boards():
         boards += scan_interface_for_micropython_boards(interface)
     return boards
 
-def active_connection_nmcli(interface):
-    command = ['nmcli', 'connection', 'show', '--active']
+
+def active_connection_nmcli(interface=None):
+    command = ['nmcli', '-t', '-f', 'NAME,TYPE', 'connection', 'show', '--active']
     logger.debug(command)
-    for line in subprocess.check_output(command):
-        line=line.strip().split()
-        if len(line)==4 and line[-1] == interface:
+    for line in subprocess.check_output(command).split('\n'):
+        line=line.strip().split(':')
+        if line[-1] == '802-11-wireless':
             return line[0]
+
+
+def active_connection_field_nmcli(ssid=None, field=None):
+    if not ssid:
+        return
+    if not field:
+        field = 'IP4.ADDRESS[1]'
+    command = ['nmcli', '-s', 'connection', 'show', ssid]
+    logger.debug(command)
+    for line in subprocess.check_output(command).split('\n'):
+        line = line.split(':', 1)
+        if line[0] == field:
+            return line[-1].strip()
+
+
+def active_connection_password_nmcli(ssid=None):
+    if not ssid:
+        return
+    command = ['nmcli', '-s', 'connection', 'show', ssid]
+    logger.debug(command)
+    for line in subprocess.check_output(command).split('\n'):
+        line = line.split(':', 1)
+        if line[0] == '802-11-wireless-security.psk':
+            logger.debug(line[-1].strip())
+            return line[-1].strip()
+
 
 def activate_connection_nmcli(connection):
     if not connection:
@@ -152,16 +181,23 @@ def action_configure_device(arguments):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    parser = argparse.ArgumentParser()
+    # logging.basicConfig(level=logging.DEBUG)
+    ssid=active_connection_nmcli()
+    if ssid:
+        wifi_passphrase = active_connection_password_nmcli(ssid)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     command_parser = parser.add_subparsers(dest='command', help='Commands')
 
-    configure_parser = command_parser.add_parser('configure', help='Configure a micropython device')
+    configure_parser = command_parser.add_parser('configure', help='Configure a micropython device',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     configure_parser.add_argument('board', help='Micropython boards to configure')
     wifi_group = configure_parser.add_argument_group('Wifi Settings')
-    wifi_group.add_argument('--ssid', default=None, help="The wifi network to connect to")
-    wifi_group.add_argument('--wifi_passphrase', default=None, help='The passphrase/password for the wifi network')
+    wifi_group.add_argument('--ssid', default=ssid, help="The wifi network to connect to")
+    wifi_group.add_argument('--wifi_passphrase', default=wifi_passphrase, help='The passphrase/password for the wifi network')
     configure_parser.add_argument('--keyval', action='append', default=[], help='Add arbitrary key/values to the configuration')
+
+    redis_group = configure_parser.add_argument_group('Redis Settings')
+    redis_group.add_argument('--redis_server', default=active_connection_field_nmcli(ssid, 'IP4.ADDRESS[1]').split('/')[0], help='Redis server address')
+    redis_group.add_argument('--redis_port', default='18266', help='Redis server port')
 
     scan_parser = command_parser.add_parser('scan', help='Scan for unconfigured micropython devices')
 
