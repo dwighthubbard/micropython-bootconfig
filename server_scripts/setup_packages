@@ -21,7 +21,7 @@ def change_directory(path):
 
 def update_dunder_init_version(filename, version=None):
     if not version:
-        version = '0.0.%s' % os.environ.get('TRAVIS_BUILD_NUMBER', '0')
+        version = get_version()
     if os.path.exists(filename):
         infile = None
         with open(filename) as init_handle:
@@ -36,11 +36,23 @@ def update_dunder_init_version(filename, version=None):
                     init_handle.write(line)
 
 
+def git_rev_count():
+    try:
+        revcount = len(subprocess.check_output('git rev-list --all'.split()).decode().split('\n'))
+    except subprocess.CalledProcessError:
+        revcount = 0
+    return revcount
+
+
+def get_version():
+    return '0.0.%s' % os.environ.get('TRAVIS_BUILD_NUMBER', str(git_rev_count()))
+
+
 def update_setup_version(filename=None, version=None):
     if not filename:
         filename = 'setup.py'
     if not version:
-        version = '0.0.%s' % os.environ.get('TRAVIS_BUILD_NUMBER', '0')
+        version = get_version()
     infile = None
     with open(filename) as setup_handle:
         infile = setup_handle.readlines()
