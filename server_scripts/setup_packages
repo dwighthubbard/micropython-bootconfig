@@ -19,6 +19,21 @@ def change_directory(path):
         os.chdir(cwd)
 
 
+def update_dunder_init_version(filename):
+    if os.path.exists(filename):
+        infile = None
+        with open(filename) as init_handle:
+            infile = init_handle.readlines()
+        if infile:
+            with open(filename, 'w') as init_handle:
+                for line in infile:
+                    if '__version__' in line:
+                        temp = line.split('=')
+                        temp[-1] = ' ' + repr(version) + '\n'
+                        line = '='.join(temp)
+                    init_handle.write(line)
+
+
 def update_setup_version(filename=None, version=None):
     if not filename:
         filename = 'setup.py'
@@ -35,18 +50,6 @@ def update_setup_version(filename=None, version=None):
                     temp[-1] = repr(version) + ',\n'
                     line = '='.join(temp)
                 setup_handle.write(line)
-    if os.path.exists('micropython-bootconfig/__init__.py'):
-        infile = None
-        with open('micropython-bootconfig/__init__.py') as init_handle:
-            infile = init_handle.readlines()
-        if infile:
-            with open('micropython-bootconfig/__init__.py', 'w') as init_handle:
-                for line in infile:
-                    if '__version__' in line:
-                        temp = line.split('=')
-                        temp[-1] = ' ' + repr(version) + '\n'
-                        line = '='.join(temp)
-                    init_handle.write(line)
 
 def setup_in_directory(path, setup_arguments=None, version=None):
     global failed
@@ -76,6 +79,7 @@ def setup_in_directory(path, setup_arguments=None, version=None):
 def setup_packages(setup_arguments=None):
     if not setup_arguments:
         setup_arguments = ['sdist']
+    update_dunder_init_version('bootconfig/__init__.py')
     setup_in_directory('.', setup_arguments=setup_arguments)
     # for directory in os.listdir('.'):
     #     if directory.startswith('micropython-bootconfig'):
