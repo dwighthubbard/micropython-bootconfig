@@ -160,6 +160,8 @@ def action_configure_device(arguments):
     if arguments.ssid:
         config_dict['wifi_ssid'] = arguments.ssid
         config_dict['wifi_password'] = arguments.wifi_passphrase
+        config_dict['redis_server'] = arguments.redis_server
+        config_dict['redis_port'] = arguments.redis_port
     for item in arguments.keyval:
         if ':' in item:
             key, value = item.split(':', 1)
