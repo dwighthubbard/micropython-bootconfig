@@ -19,7 +19,9 @@ def change_directory(path):
         os.chdir(cwd)
 
 
-def update_dunder_init_version(filename):
+def update_dunder_init_version(filename, version=None):
+    if not version:
+        version = '0.0.%s' % os.environ.get('TRAVIS_BUILD_NUMBER', '0')
     if os.path.exists(filename):
         infile = None
         with open(filename) as init_handle:

@@ -7,7 +7,7 @@ from setuptools import setup
 
 setup(
     name='micropython-bootconfig',
-    version='0.0.1',
+    version='0.0.6',
     description='Service to allow configuring a micropython board',
     long_description="""This module implements a service that configures an IoT board running micropython""",
     url='https://github.com/dhubbard/micropython-bootconfig',
@@ -18,5 +18,9 @@ setup(
     maintainer_email='dwight@dwighthubbard.com',
     license='MIT',
     packages=['bootconfig'],
+    scripts=[
+        # 'micropython_scripts/main.py',
+        'server_scripts/micropython_board_manager',
+    ],
     zip_safe=True,
 )
