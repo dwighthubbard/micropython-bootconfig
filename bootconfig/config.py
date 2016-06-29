@@ -3,8 +3,12 @@ Configuration file management functions
 """
 try:
     import ujson as json
-except:
+except ImportError:
     import json
+try:
+    import uos as os
+except ImportError:
+    import os
 
 
 def load(config_file=None):
@@ -45,6 +49,12 @@ def save(values, config_file=None):
     """
     if not config_file:
         config_file = '/etc/device_config.json'
+
+    try:
+        os.mkdir('/etc')
+    except OSError:
+        pass
+
     with open(config_file, 'wb') as f:
         f.write(json.dumps(values))
 
