@@ -18,7 +18,7 @@ def load(config_file=None):
     Parameters
     ----------
     config_file : str, optional
-        The configuration file to load, defaults to '/etc/device_config.json'
+        The configuration file to load, defaults to 'etc/device_config.json'
 
     Returns
     -------
@@ -26,7 +26,7 @@ def load(config_file=None):
         A dictionary of the configuration settings, the dict with be empty if there is no configuration file
     """
     if not config_file:
-        config_file = '/etc/device_config.json'
+        config_file = 'etc/device_config.json'
     try:
         with open(config_file) as f:
             return json.loads(f.read())
@@ -45,13 +45,13 @@ def save(values, config_file=None):
         The settings dictionary to save
 
     config_file : str, optional
-        The configuration file to load, defaults to '/etc/device_config.json'
+        The configuration file to load, defaults to 'etc/device_config.json'
     """
     if not config_file:
-        config_file = '/etc/device_config.json'
+        config_file = 'etc/device_config.json'
 
     try:
-        os.mkdir('/etc')
+        os.mkdir('etc')
     except OSError:
         pass
 
@@ -69,7 +69,7 @@ def get(key, config_file=None):
         The key to fetch
 
     config_file : str, optional
-        The configuration file to get the settings from, defaults to '/etc/device_config.json'
+        The configuration file to get the settings from, defaults to 'etc/device_config.json'
 
     Returns
     -------
@@ -92,7 +92,7 @@ def set(key, value, config_file=None):
         The value to store
 
     config_file : str, optional
-        The configuration file to get the settings from, defaults to '/etc/device_config.json'
+        The configuration file to get the settings from, defaults to 'etc/device_config.json'
 
     Returns
     -------
