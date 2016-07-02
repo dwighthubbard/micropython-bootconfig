@@ -20,7 +20,6 @@ setup(
     packages=['bootconfig'],
     scripts=[
         # 'micropython_scripts/main.py',
-        'server_scripts/micropython_board_manager',
     ],
     zip_safe=True,
 )

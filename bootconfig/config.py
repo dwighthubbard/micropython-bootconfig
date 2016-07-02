@@ -102,3 +102,11 @@ def set(key, value, config_file=None):
     values = load(config_file=config_file)
     values[key] = value
     save(values, config_file=config_file)
+
+
+def list_settings(config_file=None):
+    settings = load(config_file=config_file)
+    keys = settings.keys()
+    keys.sort()
+    for key in keys:
+        print('%s=%s' % (key, settings[key]))
