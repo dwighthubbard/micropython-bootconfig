@@ -1,4 +1,7 @@
 boot_operations = {
+    'cloudclient': b"""import redis_cloudclient
+redis_cloudclient.start()
+""",
     'webrepl': b"""import webrepl
 webrepl.start()
 """
