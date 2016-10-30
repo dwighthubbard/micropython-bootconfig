@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+import argparse
+import contextlib
+import os
+import subprocess
+import sys
+
+
+failed = []
+
+
+@contextlib.contextmanager
+def change_directory(path):
+    cwd = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(cwd)
+
+
+def update_dunder_init_version(filename, version=None):
+    if not version:
+        version = get_version()
+    if os.path.exists(filename):
+        infile = None
+        with open(filename) as init_handle:
+            infile = init_handle.readlines()
+        if infile:
+            with open(filename, 'w') as init_handle:
+                for line in infile:
+                    if '__version__' in line:
+                        temp = line.split('=')
+                        temp[-1] = ' ' + repr(version) + '\n'
+                        line = '='.join(temp)
+                    init_handle.write(line)
+
+
+def git_rev_count():
+    try:
+        revcount = len(subprocess.check_output('git rev-list --all'.split()).decode().split('\n'))
+    except subprocess.CalledProcessError:
+        revcount = 0
+    return revcount
+
+
+def get_version():
+    return '0.0.%s' % os.environ.get('TRAVIS_BUILD_NUMBER', str(git_rev_count()))
+
+
+def update_setup_version(filename=None, version=None):
+    if not filename:
+        filename = 'setup.py'
+    if not version:
+        version = get_version()
+    infile = None
+    with open(filename) as setup_handle:
+        infile = setup_handle.readlines()
+    if infile:
+        with open(filename, 'w') as setup_handle:
+            for line in infile:
+                if 'version=' in line:
+                    temp = line.split('=')
+                    temp[-1] = repr(version) + ',\n'
+                    line = '='.join(temp)
+                setup_handle.write(line)
+
+def setup_in_directory(path, setup_arguments=None, version=None):
+    global failed
+    if not setup_arguments:
+        setup_arguments = ['sdist']
+    if not os.path.exists('dist'):
+        os.mkdir('dist')
+    with change_directory(path):
+        update_setup_version(version=version)
+        try:
+            subprocess.check_call(
+                [
+                    sys.executable,
+                    './setup.py',
+                ] + setup_arguments
+            )
+        except subprocess.CalledProcessError:
+            failed.append(path)
+        # for f in os.listdir('dist'):
+        #     filename = os.path.join('dist', f)
+        #     dest_filename = os.path.join('../dist', f)
+        #     if filename.endswith('.tar.gz'):
+        #         print('Renaming: %r->%r' % (filename, dest_filename))
+        #         os.rename(filename, dest_filename)
+
+
+def setup_packages(setup_arguments=None):
+    if not setup_arguments:
+        setup_arguments = ['sdist']
+    update_dunder_init_version('bootconfig/__init__.py')
+    setup_in_directory('.', setup_arguments=setup_arguments)
+    # for directory in os.listdir('.'):
+    #     if directory.startswith('micropython-bootconfig'):
+    #         setup_in_directory(directory, setup_arguments=setup_arguments)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('setup_argument', nargs='*', default=[])
+    args = parser.parse_args()
+    setup_packages(setup_arguments=args.setup_argument)
+    if failed:
+        print('The following failed: %s' % ','.join(failed))
