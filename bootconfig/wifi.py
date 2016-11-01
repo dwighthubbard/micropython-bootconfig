@@ -1,4 +1,4 @@
-from network import WLAN, AP_IF, STA_IF
+from network import WLAN
 from time import sleep
 
 
@@ -6,9 +6,29 @@ def connect_to_wifi(ssid, password, retries=10):
     """
     Connect to a WIFI network
     """
+    try:
+        from network import STA_IF
+    except ImportError:
+        return connect_to_wifi_wipy(ssid, password, retries=retries)
+
     wlan = WLAN(STA_IF)
     wlan.active(True)
     wlan.connect(ssid, password)
+    retry_count = 0
+    while not wlan.isconnected():
+        sleep(1)
+        retry_count += 1
+        if retry_count > retries:
+            return False
+    return True
+
+
+def connect_to_wifi_wipy(ssid, password, retries=10):
+    """
+    Connect to a WIFI network
+    """
+    wlan = WLAN(mode=WLAN.STA)
+    wlan.connect(ssid=ssid, auth=(WLAN.WPA2, password))
     retry_count = 0
     while not wlan.isconnected():
         sleep(1)
