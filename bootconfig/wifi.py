@@ -28,6 +28,7 @@ def connect_to_wifi_wipy(ssid, password, retries=10):
     Connect to a WIFI network
     """
     wlan = WLAN(mode=WLAN.STA)
+    print("Connecting to wifi network '%s'" % ssid)
     wlan.connect(ssid=ssid, auth=(WLAN.WPA2, password))
     retry_count = 0
     while not wlan.isconnected():
@@ -35,6 +36,7 @@ def connect_to_wifi_wipy(ssid, password, retries=10):
         retry_count += 1
         if retry_count > retries:
             return False
+    print('Connected', wlan.ifconfig())
     return True
 
 
@@ -47,7 +49,7 @@ def enable_ap_mode(essid=None, password=None):
     if not essid:
         essid = b"micropython-esp8266-%s" % hexlify(wifi_interface.config("mac")[-3:])
     if not password:
-        password = b'MicropyBootConfig'
+        password = b'micropybootconfig'
 
     wifi_interface.config(essid=essid, authmode=AUTH_WPA_WPA2_PSK, password=password)
     del hexlify
