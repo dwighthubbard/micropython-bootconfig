@@ -76,7 +76,7 @@ def get(key, config_file=None):
     bytes
         The return value as a bytestream or None if there is no such configuration setting
     """
-    return load(config_file=config_file).get(key, None)
+    return load(config_file=config_file).get(key, '')
 
 
 def set(key, value, config_file=None):
@@ -104,9 +104,17 @@ def set(key, value, config_file=None):
     save(values, config_file=config_file)
 
 
+def delete(key, config_file=None):
+    """Delete a setting"""
+    values = load(config_file=config_file)
+    del values[key]
+    save(values, config_file=config_file)
+
+
 def list_settings(config_file=None):
+    """Print a list of settings"""
     settings = load(config_file=config_file)
-    keys = settings.keys()
+    keys = list(settings.keys())
     keys.sort()
     for key in keys:
         print('%s=%s' % (key, settings[key]))

@@ -1,3 +1,3 @@
-__version__ = '0.0.22'
+__version__ = '0.0.23'
 
 all = ['config', 'configserver', 'device', 'init', 'serial', 'wifi']

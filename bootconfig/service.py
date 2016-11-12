@@ -15,7 +15,11 @@ configuration()
         fh.write(code)
 
 
-def disable_autostart():
+def enable():
+    autostart()
+
+
+def disable():
     """
     Remove the startup code from main.py
     """
